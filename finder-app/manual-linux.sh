@@ -27,7 +27,7 @@ mkdir -p ${OUTDIR}
 
 cd "$OUTDIR"
 if [ ! -d "${OUTDIR}/linux-stable" ]; then
-    #Clone only if the repository does not exist.
+    # Clone only if the repository does not exist.
         echo "CLONING GIT LINUX STABLE VERSION ${KERNEL_VERSION} IN ${OUTDIR}"
         git clone ${KERNEL_REPO} --depth 1 --single-branch --branch ${KERNEL_VERSION}
 fi
@@ -36,18 +36,18 @@ if [ ! -e ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
     echo "Checking out version ${KERNEL_VERSION}"
     git checkout ${KERNEL_VERSION}
 
-#--------------------------------------------
-    # TODO: Add your kernel build steps here
-#--------------------------------------------    
-    make ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} mproper #clean the kernel
-    make ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} defconfig #default config
-    make -j12 ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} all #compile the kernel
+    #--------------------------------------------
+    # Kernel build steps
+    #--------------------------------------------    
+    make ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} mproper # Clean the kernel
+    make ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} defconfig # Default config
+    make -j12 ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} all # Compile the kernel
 
-    make ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} modules #compile modules
-    make ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} dtbs #compile device tree
+    make ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} modules # Compile modules
+    make ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} dtbs # Compile device tree
 fi
 
-cp ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ${OUTDIR}/ #copy to output dir
+cp ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ${OUTDIR}/ # Copy to output dir
 echo "Adding the Image in outdir"
 
 
@@ -60,9 +60,9 @@ then
 fi
 
 #----------------------------------------
-# TODO: Create necessary base directories
+# Create necessary base directories
 #----------------------------------------
-mkdir "$OUTDIR/rootfs" #MUST BE CHECKED LATER 
+mkdir "$OUTDIR/rootfs"
 mkdir -p ${OUTDIR}/rootfs/{bin,sbin,lib,lib64,dev,etc,home,proc,sys,tmp,usr,var}
 mkdir -p ${OUTDIR}/rootfs/usr/{bin,sbin,lib}
 
@@ -72,12 +72,13 @@ mkdir -p ${OUTDIR}/rootfs/var/log
 cd "$OUTDIR"
 if [ ! -d "${OUTDIR}/busybox" ]
 then
-git clone https://github.com/mirror/busybox.git
+    git clone https://github.com/mirror/busybox.git
     cd busybox
     git checkout ${BUSYBOX_VERSION}
     make distclean
     make defconfig
-else    cd busybox
+else
+    cd busybox
 fi
 
 #---------------------------------
@@ -103,7 +104,7 @@ cp ${LIBC_PATH}/lib64/libresolv.so.2 ${OUTDIR}/rootfs/lib64/
 cp ${LIBC_PATH}/lib64/libc.so.6 ${OUTDIR}/rootfs/lib64/
 
 #--------------------------
-# TODO: Make device nodes
+# Make device nodes
 #--------------------------
 echo "Creating device nodes..."
 sudo rm -f ${OUTDIR}/rootfs/dev/null
@@ -119,7 +120,7 @@ echo "Cleaning and building writer utility"
 
 cd ${FINDER_APP_DIR}
 make clean
-make CC=${CROSS_COMPILE}gcc #Security message
+make CC=${CROSS_COMPILE}gcc # Security message
 if [ -f writer ]; then
     echo "Writer utility built successfully"
 else
@@ -132,7 +133,7 @@ fi
 # on the target rootfs
 #-------------------------------------------------------------------------------
 
-#this part was made by IA ---------->
+# Copy finder files to rootfs
 cp ${FINDER_APP_DIR}/finder-test.sh ${OUTDIR}/rootfs/home/
 cp ${FINDER_APP_DIR}/finder.sh ${OUTDIR}/rootfs/home/
 cp ${FINDER_APP_DIR}/writer ${OUTDIR}/rootfs/home/
@@ -141,19 +142,16 @@ cp ${FINDER_APP_DIR}/autorun-qemu.sh ${OUTDIR}/rootfs/home/
 cp -rL ${FINDER_APP_DIR}/conf ${OUTDIR}/rootfs/home/
 
 cd "${OUTDIR}/rootfs"
-#<-------------
 
 #--------------------------------
-# TODO: Chown the root directory
+# Chown the root directory
 #-------------------------------
 sudo chown -R root:root ${OUTDIR}/rootfs
 
-
 #--------------------------------
-# TODO: Create initramfs.cpio.gz
+# Create initramfs.cpio.gz
 #--------------------------------
 cd "${OUTDIR}/rootfs"
-#with help of stackoverflow (above)
+# Create initramfs
 find . | cpio -o -H newc | gzip -9 > ${OUTDIR}/initramfs.cpio.gz
 cd "${OUTDIR}"
-
