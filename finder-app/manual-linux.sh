@@ -31,32 +31,31 @@ if [ ! -d "${OUTDIR}/linux-stable" ]; then
         echo "CLONING GIT LINUX STABLE VERSION ${KERNEL_VERSION} IN ${OUTDIR}"
         git clone ${KERNEL_REPO} --depth 1 --single-branch --branch ${KERNEL_VERSION}
 fi
-if [ ! -e ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
-    cd linux-stable
-    echo "Checking out version ${KERNEL_VERSION}"
-    git checkout ${KERNEL_VERSION}
+cd linux-stable
+echo "Checking out version ${KERNEL_VERSION}"
+git checkout ${KERNEL_VERSION}
 
-    #--------------------------------------------
-    # Kernel build steps
-    #--------------------------------------------    
-    make ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} mproper # Clean the kernel
-    make ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} defconfig # Default config
-    make -j12 ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} all # Compile the kernel
+# Generate default kernel configuration
+echo "Generating default kernel configuration..."
+make ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} defconfig
 
-    make ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} modules # Compile modules
-    make ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} dtbs # Compile device tree
-fi
+#--------------------------------------------
+# Kernel build steps
+#--------------------------------------------    
+make ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} mproper # Clean the kernel
+make ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} defconfig # Default config
+make -j12 ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} all # Compile the kernel
 
-# Vérification de l'existence du fichier Image dans le répertoire correct
-if [ -e ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
-    # Copier le fichier Image dans le bon répertoire
-    cp ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ${OUTDIR}/Image
-    echo "Adding the Image in ${OUTDIR}"
-else
-    echo "Error: Kernel Image not found!"
-    exit 1
-fi
+make ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} modules # Compile modules
+make ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} dtbs # Compile device tree
 
+# Copier l'image dans le répertoire de sortie
+cp ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ${OUTDIR}/Image
+echo "Kernel Image added to ${OUTDIR}"
+
+#----------------------------------------
+# Create necessary base directories
+#----------------------------------------
 echo "Creating the staging directory for the root filesystem"
 cd "$OUTDIR"
 if [ -d "${OUTDIR}/rootfs" ]
@@ -65,16 +64,13 @@ then
     sudo rm  -rf ${OUTDIR}/rootfs
 fi
 
-#----------------------------------------
-# Create necessary base directories
-#----------------------------------------
 mkdir "$OUTDIR/rootfs"
 mkdir -p ${OUTDIR}/rootfs/{bin,sbin,lib,lib64,dev,etc,home,proc,sys,tmp,usr,var}
 mkdir -p ${OUTDIR}/rootfs/usr/{bin,sbin,lib}
 
 mkdir -p ${OUTDIR}/rootfs/var/log
 
-
+# Compiler et installer busybox
 cd "$OUTDIR"
 if [ ! -d "${OUTDIR}/busybox" ]
 then
@@ -87,19 +83,10 @@ else
     cd busybox
 fi
 
-#---------------------------------
-# Compile and install busybox
-#--------------------------------
-echo "Compiling busybox"
 make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE}
 make CONFIG_PREFIX="${OUTDIR}/rootfs" ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} install
 
-# Apply setuid root to busybox binary
 sudo chmod u+s ${OUTDIR}/rootfs/bin/busybox
-
-# Verify busybox binary
-${CROSS_COMPILE}readelf -a ${OUTDIR}/rootfs/bin/busybox | grep "program interpreter"
-${CROSS_COMPILE}readelf -a ${OUTDIR}/rootfs/bin/busybox | grep "Shared library"
 
 #-------------------------------------------
 # Add library dependencies to rootfs
@@ -119,14 +106,10 @@ sudo mknod -m 666 ${OUTDIR}/rootfs/dev/null c 1 3
 sudo rm -f ${OUTDIR}/rootfs/dev/console
 sudo mknod -m 600 ${OUTDIR}/rootfs/dev/console c 5 1
 
-#-------------------------------------------
 # Clean and build the writer utility
-#-------------------------------------------
-echo "Cleaning and building writer utility"
-
 cd ${FINDER_APP_DIR}
 make clean
-make CC=${CROSS_COMPILE}gcc # Security message
+make CC=${CROSS_COMPILE}gcc
 if [ -f writer ]; then
     echo "Writer utility built successfully"
 else
@@ -134,12 +117,7 @@ else
     exit 1
 fi
 
-#-------------------------------------------------------------------------------
-# Copy the finder related scripts and executables to the /home directory
-# on the target rootfs
-#-------------------------------------------------------------------------------
-
-# Copy finder files to rootfs
+# Copy the finder related scripts and executables to the /home directory on the target rootfs
 cp ${FINDER_APP_DIR}/finder-test.sh ${OUTDIR}/rootfs/home/
 cp ${FINDER_APP_DIR}/finder.sh ${OUTDIR}/rootfs/home/
 cp ${FINDER_APP_DIR}/writer ${OUTDIR}/rootfs/home/
@@ -147,17 +125,6 @@ cp ${FINDER_APP_DIR}/writer.c ${OUTDIR}/rootfs/home/
 cp ${FINDER_APP_DIR}/autorun-qemu.sh ${OUTDIR}/rootfs/home/
 cp -rL ${FINDER_APP_DIR}/conf ${OUTDIR}/rootfs/home/
 
-cd "${OUTDIR}/rootfs"
-
-#--------------------------------
-# Chown the root directory
-#-------------------------------
-sudo chown -R root:root ${OUTDIR}/rootfs
-
-#--------------------------------
 # Create initramfs.cpio.gz
-#--------------------------------
 cd "${OUTDIR}/rootfs"
-# Create initramfs
-find . | cpio -o -H newc | gzip -9 > ${OUTDIR}/initramfs.cpio.gz
-cd "${OUTDIR}"
+find . | cpio -o -
