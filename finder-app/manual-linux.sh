@@ -47,10 +47,11 @@ if [ ! -e ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
     make ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} dtbs # Compile device tree
 fi
 
-# Vérification si l'image a été créée avant de la copier
+# Vérification de l'existence du fichier Image dans le répertoire correct
 if [ -e ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
-    cp ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ${OUTDIR}/ # Copy to output dir
-    echo "Adding the Image in outdir"
+    # Copier le fichier Image dans le bon répertoire
+    cp ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ${OUTDIR}/Image
+    echo "Adding the Image in ${OUTDIR}"
 else
     echo "Error: Kernel Image not found!"
     exit 1
