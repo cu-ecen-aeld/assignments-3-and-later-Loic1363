@@ -58,7 +58,22 @@ if [ ! -e ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
     echo "Building the kernel image"
     make -j$(nproc) ARCH=arm64 Image
 fi
+if [ ! -f ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
+    echo "ERROR: Kernel image not found! Building the kernel..."
 
+    # Configure le noyau si nécessaire
+    cd ${OUTDIR}/linux-stable
+    make ARCH=arm64 defconfig  # Configure le noyau pour l'architecture arm64
+
+    # Compile le noyau si nécessaire
+    make -j$(nproc) ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} Image  # Compile le noyau
+
+    # Vérifie si l'image est générée
+    if [ ! -f ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
+        echo "ERROR: Kernel image not found after build! Something went wrong."
+        exit 1
+    fi
+fi
 cp ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ${OUTDIR}/ # copy to output dir
 echo "Adding the Image in outdir"
 cp ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image /tmp/aesd-autograder/ # copier l'image dans /tmp/aesd-autograder
