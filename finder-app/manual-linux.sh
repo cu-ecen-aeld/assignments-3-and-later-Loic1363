@@ -45,6 +45,19 @@ if [ ! -e ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
     make ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} modules # compile modules
     make ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} dtbs # compile device tree
 fi
+# Si les fichiers de configuration du noyau n'existent pas, générer les fichiers de configuration
+if [ ! -f ${OUTDIR}/linux-stable/.config ]; then
+    echo "Configuring the kernel"
+    cd ${OUTDIR}/linux-stable
+    make ARCH=arm64 defconfig
+fi
+
+# Maintenant on peut compiler le noyau
+if [ ! -e ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
+    cd ${OUTDIR}/linux-stable
+    echo "Building the kernel image"
+    make -j$(nproc) ARCH=arm64 Image
+fi
 
 cp ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ${OUTDIR}/ # copy to output dir
 echo "Adding the Image in outdir"
