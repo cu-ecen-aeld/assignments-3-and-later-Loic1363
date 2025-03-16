@@ -64,15 +64,11 @@ if [ ! -f ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
     # Configure le noyau si nécessaire
     cd ${OUTDIR}/linux-stable
     make ARCH=arm64 defconfig  # Configure le noyau pour l'architecture arm64
-
+  # Compilation du noyau (génération de l'image)
+    make ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} -j$(nproc) Image
     # Compile le noyau si nécessaire
     make -j$(nproc) ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} Image  # Compile le noyau
 
-    # Vérifie si l'image est générée
-    if [ ! -f ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
-        echo "ERROR: Kernel image not found after build! Something went wrong."
-        exit 1
-    fi
 fi
 cp ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ${OUTDIR}/ # copy to output dir
 echo "Adding the Image in outdir"
