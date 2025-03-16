@@ -30,46 +30,28 @@ if [ ! -d "${OUTDIR}/linux-stable" ]; then
     echo "CLONING GIT LINUX STABLE VERSION ${KERNEL_VERSION} IN ${OUTDIR}"
     git clone --depth 1 --branch ${KERNEL_VERSION} https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git ${OUTDIR}/linux-stable
 fi
-if [ ! -e ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
-    cd linux-stable
-    echo "Checking out version ${KERNEL_VERSION}"
-    git checkout ${KERNEL_VERSION}
+cd linux-stable
+echo "Checking out version ${KERNEL_VERSION}"
+git checkout ${KERNEL_VERSION}
 
-    #--------------------------------------------
-    # Kernel build steps
-    #--------------------------------------------    
-    make ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} mproper # clean the kernel
-    make ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} defconfig # default config
-    make ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} oldconfig # Generate .config file
-    make -j12 ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} all # compile the kernel
-    make ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} modules # compile modules
-    make ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} dtbs # compile device tree
-fi
-# Si les fichiers de configuration du noyau n'existent pas, générer les fichiers de configuration
+#--------------------------------------------
+# Kernel build steps
+#--------------------------------------------    
 if [ ! -f ${OUTDIR}/linux-stable/.config ]; then
     echo "Configuring the kernel"
-    cd ${OUTDIR}/linux-stable
-    make ARCH=arm64 defconfig
-fi
-
-# Maintenant on peut compiler le noyau
-if [ ! -e ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
-    cd ${OUTDIR}/linux-stable
-    echo "Building the kernel image"
-    make -j$(nproc) ARCH=arm64 Image
-fi
-if [ ! -f ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
-    echo "ERROR: Kernel image not found! Building the kernel..."
-
-    # Configure le noyau si nécessaire
-    cd ${OUTDIR}/linux-stable
     make ARCH=arm64 defconfig  # Configure le noyau pour l'architecture arm64
-  # Compilation du noyau (génération de l'image)
-    make ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} -j$(nproc) Image
-    # Compile le noyau si nécessaire
-    make -j$(nproc) ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} Image  # Compile le noyau
-
 fi
+
+if [ ! -e ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
+    echo "Building the kernel image"
+    make -j$(nproc) ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} Image  # Compile le noyau
+fi
+
+if [ ! -f ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
+    echo "ERROR: Kernel image not found after build! Something went wrong."
+    exit 1
+fi
+
 cp ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ${OUTDIR}/ # copy to output dir
 echo "Adding the Image in outdir"
 cp ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image /tmp/aesd-autograder/ # copier l'image dans /tmp/aesd-autograder
@@ -176,5 +158,6 @@ sudo chown -R root:root ${OUTDIR}/rootfs
 # Create initramfs.cpio.gz
 #--------------------------------
 cd "${OUTDIR}/rootfs"
+#with help of stackoverflow (above)
 find . | cpio -o -H newc | gzip -9 > ${OUTDIR}/initramfs.cpio.gz
 cd "${OUTDIR}"
