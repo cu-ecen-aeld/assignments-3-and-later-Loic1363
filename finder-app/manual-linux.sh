@@ -11,8 +11,12 @@ KERNEL_VERSION=v5.15.163
 BUSYBOX_VERSION=1_33_1
 FINDER_APP_DIR=/home/loic/ASSIGNMENT1/finder-app
 ARCH=arm64
-export CROSS_COMPILE=/home/loic/arm-cross-compiler/arm-gnu-toolchain-13.3.rel1-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-
+CROSS_COMPILE=/home/loic/arm-cross-compiler/arm-gnu-toolchain-13.3.rel1-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-
 LIBC_PATH=/home/loic/arm-cross-compiler/arm-gnu-toolchain-13.3.rel1-x86_64-aarch64-none-linux-gnu/aarch64-none-linux-gnu/libc
+
+export PATH=$PATH:/home/loic/arm-cross-compiler/arm-gnu-toolchain-13.3.rel1-x86_64-aarch64-none-linux-gnu/bin
+echo "Vérification du compilateur croisé : $CROSS_COMPILE"
+which aarch64-none-linux-gnu-gcc
 
 if [ $# -lt 1 ]
 then
