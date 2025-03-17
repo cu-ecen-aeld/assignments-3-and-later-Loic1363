@@ -21,6 +21,8 @@ else
         OUTDIR=$1
         echo "Using passed directory ${OUTDIR} for output"
 fi
+echo "Using cross compiler: $CROSS_COMPILE"
+ls -l $(dirname $CROSS_COMPILE)
 
 mkdir -p ${OUTDIR}
 
