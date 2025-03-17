@@ -1,4 +1,4 @@
-#!/bin/bash
+#/bin/bash
 # Script outline to install and build kernel.
 # Author: Siddhant Jajoo.
 
@@ -22,7 +22,7 @@ else
         echo "Using passed directory ${OUTDIR} for output"
 fi
 echo "Using cross compiler: $CROSS_COMPILE"
-ls -l $(dirname $CROSS_COMPILE)
+#ls -l $(dirname $CROSS_COMPILE)
 
 mkdir -p ${OUTDIR}
 
@@ -30,44 +30,27 @@ cd "$OUTDIR"
 if [ ! -d "${OUTDIR}/linux-stable" ]; then
     # Clone only if the repository does not exist.
     echo "CLONING GIT LINUX STABLE VERSION ${KERNEL_VERSION} IN ${OUTDIR}"
-    git clone --depth 1 --branch ${KERNEL_VERSION} https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git ${OUTDIR}/linux-stable
+    git clone ${KERNEL_REPO} --depth 1 --single-branch --branch ${KARNEL_VERSION}
 fi
-cd linux-stable
-echo "Checking out version ${KERNEL_VERSION}"
-git checkout ${KERNEL_VERSION}
 
 #--------------------------------------------
 # Kernel build steps
 #--------------------------------------------    
-if [ ! -f ${OUTDIR}/linux-stable/.config ]; then
-    echo "Configuring the kernel"
-    make ARCH=arm64 defconfig  # Configure le noyau pour l'architecture arm64
-fi
-
 if [ ! -e ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
-    echo "Building the kernel image"
-    make -j$(nproc) ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} Image  # Compile le noyau
+    cd linux-stable
+    git checkout ${KARNEL_VERSION}
+    make ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} mrproper
+    make ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} defconfig
+    make -j12 ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} all
+    make ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} modules
+    make ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} dtbs
 fi
+cp ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ${OUTDIR}/
 
-if [ ! -f ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
-    echo "ERROR: Kernel image not found after build! Something went wrong."
-    exit 1
-fi
-
-cp ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ${OUTDIR}/ # copy to output dir
-echo "Adding the Image in outdir"
-cp ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image /tmp/aesd-autograder/ # copier l'image dans /tmp/aesd-autograder
-echo "Kernel Image copied to /tmp/aesd-autograder"
-
-
-echo "Creating the staging directory for the root filesystem"
-cd "$OUTDIR"
-if [ -d "${OUTDIR}/rootfs" ]
-then
-    echo "Deleting rootfs directory at ${OUTDIR}/rootfs and starting over"
+cd "${OUTDIR}"
+if [ -d "${OUTDIR}/rootfs" ]; then
     sudo rm -rf ${OUTDIR}/rootfs
 fi
-
 #----------------------------------------
 # Create necessary base directories
 #----------------------------------------
@@ -77,17 +60,16 @@ mkdir -p ${OUTDIR}/rootfs/usr/{bin,sbin,lib}
 mkdir -p ${OUTDIR}/rootfs/var/log
 
 cd "$OUTDIR"
-if [ ! -d "${OUTDIR}/busybox" ]
-then
+
+if [ ! -d "$OUTDIR/busybox" ]; then
     git clone https://github.com/mirror/busybox.git
     cd busybox
     git checkout ${BUSYBOX_VERSION}
+
     make distclean
     make defconfig
-    make oldconfig
 else
-    cd busybox
-    make oldconfig
+   cd busybox
 fi
 
 #---------------------------------
@@ -97,12 +79,11 @@ echo "Compiling busybox"
 make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE}
 make CONFIG_PREFIX="${OUTDIR}/rootfs" ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} install
 
-# Apply setuid root to busybox binary
-sudo chmod u+s ${OUTDIR}/rootfs/bin/busybox
+cd "${OUTDIR}"
 
 # Verify busybox binary
-${CROSS_COMPILE}readelf -a ${OUTDIR}/rootfs/bin/busybox | grep "program interpreter"
-${CROSS_COMPILE}readelf -a ${OUTDIR}/rootfs/bin/busybox | grep "Shared library"
+${CROSS_COMPILE}readelf -a ./rootfs/bin/busybox | grep "program interpreter"
+${CROSS_COMPILE}readelf -a ./rootfs/bin/busybox | grep "Shared library"
 
 #-------------------------------------------
 # Add library dependencies to rootfs
@@ -116,14 +97,10 @@ cp ${LIBC_PATH}/lib64/libc.so.6 ${OUTDIR}/rootfs/lib64/
 # Create device nodes
 #--------------------------
 echo "Creating device nodes..."
-sudo rm -f ${OUTDIR}/rootfs/dev/null
-sudo mknod -m 666 ${OUTDIR}/rootfs/dev/null c 1 3
-sudo rm -f ${OUTDIR}/rootfs/dev/console
-sudo mknod -m 600 ${OUTDIR}/rootfs/dev/console c 5 1
-# Additional devices
-sudo mknod -m 666 ${OUTDIR}/rootfs/dev/tty c 5 0
-sudo mknod -m 666 ${OUTDIR}/rootfs/dev/tty1 c 4 1
-
+sudo rm -f /dev/null
+sudo mknod -m 666 /dev/null c 1 3
+sudo rm -f /dev/console
+sudo mknod -m 600 /dev/console c 5 1
 #-------------------------------------------
 # Clean and build the writer utility
 #-------------------------------------------
@@ -131,14 +108,7 @@ echo "Cleaning and building writer utility"
 
 cd ${FINDER_APP_DIR}
 make clean
-make CC=${CROSS_COMPILE}gcc # Security message
-if [ -f writer ]; then
-    echo "Writer utility built successfully"
-else
-    echo "Error: Writer utility failed to build"
-    exit 1
-fi
-
+make CROSS_COMPILE=${CROSS_COMPILE}
 #-------------------------------------------------------------------------------
 # Copy the finder related scripts and executables to the /home directory
 # on the target rootfs
@@ -154,12 +124,13 @@ cd "${OUTDIR}/rootfs"
 #--------------------------------
 # Chown the root directory
 #-------------------------------
-sudo chown -R root:root ${OUTDIR}/rootfs
+sudo chown -R root:root *
 
 #--------------------------------
 # Create initramfs.cpio.gz
 #--------------------------------
 cd "${OUTDIR}/rootfs"
 #with help of stackoverflow (above)
-find . | cpio -o -H newc | gzip -9 > ${OUTDIR}/initramfs.cpio.gz
+find .| cpio -H newc -ov --owner root:root > ${OUTDIR}/initramfs.cpio
 cd "${OUTDIR}"
+gzip -f initramfs.cpio
