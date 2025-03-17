@@ -38,7 +38,7 @@ fi
 #--------------------------------------------    
 if [ ! -e ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
     cd linux-stable
-    git checkout ${KARNEL_VERSION}
+    git checkout ${KERNEL_VERSION}
     make ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} mrproper
     make ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} defconfig
     make -j12 ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} all
