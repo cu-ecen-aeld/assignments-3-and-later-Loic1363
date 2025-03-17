@@ -1,0 +1,42 @@
+name: Build and Test with Cross Compiler
+
+on:
+  push:
+    branches:
+      - main  # ou la branche de ton choix
+  pull_request:
+    branches:
+      - main  # ou la branche de ton choix
+
+jobs:
+  build:
+    runs-on: ubuntu-latest  # Choisir la version Ubuntu du runner
+
+    steps:
+      # Étape pour récupérer le code du dépôt
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      # Étape pour télécharger et installer le compilateur croisé ARM
+      - name: Télécharger et installer le compilateur croisé ARM
+        run: |
+          echo "Téléchargement du compilateur croisé ARM..."
+          wget https://developer.arm.com/-/media/Files/downloads/gnu-toolchain/aarch64-none-linux-gnu/gcc-arm-none-eabi-10-2020-q4-major-x86_64-linux.tar.bz2
+          tar -xjf gcc-arm-none-eabi-10-2020-q4-major-x86_64-linux.tar.bz2
+          export CROSS_COMPILE=$(pwd)/gcc-arm-none-eabi-10-2020-q4-major-x86_64-linux/bin/aarch64-none-linux-gnu-
+          echo "CROSS_COMPILE is set to $CROSS_COMPILE"
+          
+      # Vérifier que le compilateur est correctement installé et accessible
+      - name: Vérification du compilateur croisé
+        run: |
+          echo "Vérification du compilateur croisé : $CROSS_COMPILE"
+          ls -l $CROSS_COMPILE
+          $CROSS_COMPILE --version
+
+      # Étape pour effectuer la compilation avec le compilateur croisé ARM
+      - name: Build Kernel
+        run: |
+          echo "Building kernel using cross compiler..."
+          make CROSS_COMPILE=$CROSS_COMPILE
+
+      # Ajoute ici d'autres étapes comme les tests ou le déploiement
