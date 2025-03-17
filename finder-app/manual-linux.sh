@@ -14,9 +14,15 @@ ARCH=arm64
 CROSS_COMPILE=/home/loic/arm-cross-compiler/arm-gnu-toolchain-13.3.rel1-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-
 LIBC_PATH=/home/loic/arm-cross-compiler/arm-gnu-toolchain-13.3.rel1-x86_64-aarch64-none-linux-gnu/aarch64-none-linux-gnu/libc
 
-export PATH=$PATH:/home/loic/arm-cross-compiler/arm-gnu-toolchain-13.3.rel1-x86_64-aarch64-none-linux-gnu/bin
+# Définir explicitement le CROSS_COMPILE et ajouter au PATH
+export CROSS_COMPILE=/home/loic/arm-cross-compiler/arm-gnu-toolchain-13.3.rel1-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-
+export PATH=/home/loic/arm-cross-compiler/arm-gnu-toolchain-13.3.rel1-x86_64-aarch64-none-linux-gnu/bin:$PATH
+
+# Vérifier que le compilateur est bien accessible
 echo "Vérification du compilateur croisé : $CROSS_COMPILE"
 which aarch64-none-linux-gnu-gcc
+echo "CROSS_COMPILE: $CROSS_COMPILE"
+echo "PATH: $PATH"
 
 if [ $# -lt 1 ]
 then
