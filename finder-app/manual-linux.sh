@@ -135,6 +135,7 @@ sudo chown -R root:root *
 #--------------------------------
 cd "${OUTDIR}/rootfs"
 #with help of stackoverflow (above)
-find .| cpio -H newc -ov --owner root:root > ${OUTDIR}/initramfs.cpio
-cd "${OUTDIR}"
+echo "initramfs image"
+find . | cpio -H newc -ov --owner root:root > ${OUTDIR}/initramfs.cpio
+cd ..
 gzip -f initramfs.cpio
