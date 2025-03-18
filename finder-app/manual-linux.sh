@@ -9,11 +9,23 @@ OUTDIR=/tmp/aeld
 KERNEL_REPO=git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git
 KERNEL_VERSION=v5.15.163
 BUSYBOX_VERSION=1_33_1
-FINDER_APP_DIR=/home/loic/ASSIGNMENT1/finder-app
+FINDER_APP_DIR=$(realpath $(dirname $0))
 ARCH=arm64
-CROSS_COMPILE=aarch64-none-linux-gnu-
-LIBC_PATH=/home/loic/arm-cross-compiler/arm-gnu-toolchain-13.3.rel1-x86_64-aarch64-none-linux-gnu/aarch64-none-linux-gnu/libc
+CROSS_COMPILE=/home/loic/arm-cross-compiler/arm-gnu-toolchain-13.3.rel1-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-
+#CROSS_COMPILE=aarch64-none-linux-gnu-
+PACKAGES=(
+    bison
+    flex
+    build-essential
+    libssl-dev
+    bc
+    u-boot-tools
+    qemu
+    cpio
+    device-tree-compiler
+)
 
+sudo apt update && sudo apt install -y "${PACKAGES[@]}"
 echo "Vérification du compilateur croisé : $CROSS_COMPILE"
 which aarch64-none-linux-gnu-gcc
 echo "CROSS_COMPILE: $CROSS_COMPILE"
