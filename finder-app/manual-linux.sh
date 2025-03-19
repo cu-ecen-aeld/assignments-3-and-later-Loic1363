@@ -12,23 +12,13 @@ BUSYBOX_VERSION=1_33_1
 FINDER_APP_DIR=$(realpath $(dirname $0))
 ARCH=arm64
 CROSS_COMPILE=aarch64-none-linux-gnu-
-PACKAGES=(
-    bison
-    flex
-    build-essential
-    libssl-dev
-    bc
-    u-boot-tools
-    qemu
-    cpio
-    device-tree-compiler
-)
 
-sudo apt update && sudo apt install -y "${PACKAGES[@]}"
 echo "Vérification du compilateur croisé : $CROSS_COMPILE"
 which aarch64-none-linux-gnu-gcc
 echo "CROSS_COMPILE: $CROSS_COMPILE"
 echo "PATH: $PATH"
+
+
 if [ $# -lt 1 ]
 then
         echo "Using default directory ${OUTDIR} for output"
@@ -45,22 +35,27 @@ cd "$OUTDIR"
 if [ ! -d "${OUTDIR}/linux-stable" ]; then
     # Clone only if the repository does not exist.
     echo "CLONING GIT LINUX STABLE VERSION ${KERNEL_VERSION} IN ${OUTDIR}"
+
     git clone ${KERNEL_REPO} --depth 1 --single-branch --branch ${KERNEL_VERSION}
 fi
 
 #--------------------------------------------
 # Kernel build steps
-#--------------------------------------------    
+#--------------------------------------------
 if [ ! -e ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
     cd linux-stable
     git checkout ${KERNEL_VERSION}
     make ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} mrproper
+
     make ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} defconfig
+
     make -j12 ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} all
+
     make ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} modules
+
     make ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} dtbs
 fi
-cp ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ${OUTDIR}/
+cp ${OUTDIR}/linux-stable/arch/arm64/boot/Image ${OUTDIR}
 
 cd "${OUTDIR}"
 if [ -d "${OUTDIR}/rootfs" ]; then
@@ -70,9 +65,10 @@ fi
 # Create necessary base directories
 #----------------------------------------
 mkdir "$OUTDIR/rootfs"
-mkdir -p ${OUTDIR}/rootfs/{bin,sbin,lib,lib64,dev,etc,home,proc,sys,tmp,usr,var}
-mkdir -p ${OUTDIR}/rootfs/usr/{bin,sbin,lib}
-mkdir -p ${OUTDIR}/rootfs/var/log
+cd "$OUTDIR/rootfs"
+mkdir -p bin dev etc home lib lib64 proc sbin sys tmp usr var
+mkdir -p usr/bin usr/sbin usr/lib
+mkdir -p var/log
 
 cd "$OUTDIR"
 
@@ -99,10 +95,11 @@ cd "${OUTDIR}"
 # Verify busybox binary
 ${CROSS_COMPILE}readelf -a ./rootfs/bin/busybox | grep "program interpreter"
 ${CROSS_COMPILE}readelf -a ./rootfs/bin/busybox | grep "Shared library"
-
+sudo chmod +s ${OUTDIR}/rootfs/bin/busybox
 #-------------------------------------------
 # Add library dependencies to rootfs
 #-------------------------------------------
+LIBC_PATH=/home/loic/arm-cross-compiler/arm-gnu-toolchain-13.3.rel1-x86_64-aarch64-none-linux-gnu/aarch64-none-linux-gnu/libc
 cp ${LIBC_PATH}/lib/ld-linux-aarch64.so.1 ${OUTDIR}/rootfs/lib
 cp ${LIBC_PATH}/lib64/libm.so.6 ${OUTDIR}/rootfs/lib64/
 cp ${LIBC_PATH}/lib64/libresolv.so.2 ${OUTDIR}/rootfs/lib64/
@@ -133,9 +130,14 @@ cp ${FINDER_APP_DIR}/finder.sh ${OUTDIR}/rootfs/home/
 cp ${FINDER_APP_DIR}/writer ${OUTDIR}/rootfs/home/
 cp ${FINDER_APP_DIR}/writer.c ${OUTDIR}/rootfs/home/
 cp ${FINDER_APP_DIR}/autorun-qemu.sh ${OUTDIR}/rootfs/home/
-cp -rL ${FINDER_APP_DIR}/conf ${OUTDIR}/rootfs/home/
-
 cd "${OUTDIR}/rootfs"
+mkdir home/conf
+cp ${FINDER_APP_DIR}/conf/assignment.txt home/conf
+cp ${FINDER_APP_DIR}/conf/username.txt home/conf
+cp ${FINDER_APP_DIR}/autorun-qemu.sh home
+
+
+
 #--------------------------------
 # Chown the root directory
 #-------------------------------
@@ -148,5 +150,5 @@ cd "${OUTDIR}/rootfs"
 #with help of stackoverflow (above)
 echo "initramfs image"
 find . | cpio -H newc -ov --owner root:root > ${OUTDIR}/initramfs.cpio
-cd ..
+cd $OUTDIR
 gzip -f initramfs.cpio
