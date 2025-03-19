@@ -11,8 +11,8 @@ KERNEL_VERSION=v5.15.163
 BUSYBOX_VERSION=1_33_1
 FINDER_APP_DIR=$(realpath $(dirname $0))
 ARCH=arm64
-CROSS_COMPILE=aarch64-none-linux-gnu-
-
+#CROSS_COMPILE=aarch64-none-linux-gnu-
+CROSS_COMPILE=/home/loic/arm-cross-compiler/arm-gnu-toolchain-13.3.rel1-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-
 echo "Vérification du compilateur croisé : $CROSS_COMPILE"
 which aarch64-none-linux-gnu-gcc
 echo "CROSS_COMPILE: $CROSS_COMPILE"
@@ -99,7 +99,8 @@ sudo chmod +s ${OUTDIR}/rootfs/bin/busybox
 #-------------------------------------------
 # Add library dependencies to rootfs
 #-------------------------------------------
-LIBC_PATH=/home/loic/arm-cross-compiler/arm-gnu-toolchain-13.3.rel1-x86_64-aarch64-none-linux-gnu/aarch64-none-linux-gnu/libc
+LIBC_PATH=$(realpath $(aarch64-none-linux-gnu-gcc --print-sysroot))
+
 cp ${LIBC_PATH}/lib/ld-linux-aarch64.so.1 ${OUTDIR}/rootfs/lib
 cp ${LIBC_PATH}/lib64/libm.so.6 ${OUTDIR}/rootfs/lib64/
 cp ${LIBC_PATH}/lib64/libresolv.so.2 ${OUTDIR}/rootfs/lib64/
