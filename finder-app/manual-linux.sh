@@ -136,8 +136,6 @@ cp ${FINDER_APP_DIR}/conf/assignment.txt home/conf
 cp ${FINDER_APP_DIR}/conf/username.txt home/conf
 cp ${FINDER_APP_DIR}/autorun-qemu.sh home
 
-
-
 #--------------------------------
 # Chown the root directory
 #-------------------------------
